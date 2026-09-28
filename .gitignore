@@ -1,0 +1,14 @@
+# deps / build
+node_modules
+.next
+out
+*.tsbuildinfo
+next-env.d.ts
+
+# secrets and personal data
+.env
+.env*.local
+line_messages
+[LINE]*.txt
+Open Dev API Spec.html
+Open Dev API Spec_files
