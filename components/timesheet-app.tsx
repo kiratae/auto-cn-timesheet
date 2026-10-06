@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CalendarClockIcon, DownloadIcon, InboxIcon, PlusIcon, RefreshCwIcon, SendIcon, SparklesIcon, TriangleAlertIcon } from "lucide-react";
 import { toast } from "sonner";
 import { DatePicker } from "@/components/date-picker";
@@ -21,9 +21,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cancelLineExport, exportLineStream, fetchDay, proposeStream, submitEntries } from "@/lib/api";
 import { type DayData, type Slot, freeSlots, span, toHM, validateEntries } from "@/lib/rules";
+import type { AppConfig } from "@/lib/timesheet";
 import { cn } from "@/lib/utils";
 
 const ALL = "__all";
@@ -45,7 +47,8 @@ const storedRole = () => {
   }
 };
 
-export function TimesheetApp({ initialDate }: { initialDate: string }) {
+export function TimesheetApp({ initialDate, config }: { initialDate: string; config: AppConfig }) {
+  const { llm, git, line } = config;
   const [date, setDate] = useState(initialDate);
   const [day, setDay] = useState<DayData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -269,7 +272,41 @@ export function TimesheetApp({ initialDate }: { initialDate: string }) {
             </div>
             <div>
               <h1 className="text-sm leading-tight font-semibold">Timesheet Autofill</h1>
-              <p className="text-xs text-muted-foreground">LINE + GitLab → ClickNext entries</p>
+              <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                LINE + GitLab → ClickNext entries
+                <Popover>
+                  <PopoverTrigger className="flex cursor-pointer items-center gap-1.5 rounded-md" aria-label="Show connected config">
+                    <Badge variant="secondary">
+                      {llm.model} · {llm.provider}
+                    </Badge>
+                    {llm.jev && <Badge variant="secondary">Jev {llm.jev}</Badge>}
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-96 text-xs">
+                    {(
+                      [
+                        ["LLM", [["Model", llm.model], ["Provider", llm.provider], ["Jev", llm.jev ?? "off"]]],
+                        ["GitLab", [["Host", git.host ?? "not set (commits skipped)"], ["Author emails", git.emails.join(", ") || "not set"]]],
+                        [
+                          "LINE",
+                          [["Folder", line.dir], ["Me", line.me], ["Mentions", line.patterns], ["Chats", line.chats.join(", ") || "not set"]],
+                        ],
+                      ] as const
+                    ).map(([title, rows]) => (
+                      <div key={title}>
+                        <p className="mb-1 font-medium">{title}</p>
+                        <dl className="grid grid-cols-[6.5rem_1fr] gap-x-2 gap-y-0.5">
+                          {rows.map(([k, v]) => (
+                            <Fragment key={k}>
+                              <dt className="text-muted-foreground">{k}</dt>
+                              <dd className="break-all">{v}</dd>
+                            </Fragment>
+                          ))}
+                        </dl>
+                      </div>
+                    ))}
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
           </div>
           <DatePicker value={date} onChange={changeDate} />

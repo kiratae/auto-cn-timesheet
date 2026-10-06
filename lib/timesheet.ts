@@ -209,6 +209,28 @@ export async function dayState(date: string) {
 // With a Jev key, Jev picks project/task type (it's built for choosing from a list and reports confidence);
 // the LLM only splits the day and writes text, plus an English summary + sources for Jev to decide on.
 const jevEnabled = () => !!E.JEV_API_KEY;
+export type AppConfig = ReturnType<typeof appConfig>;
+// Shown in the UI header: which LLM, GitLab and LINE sources this server reads. Never includes keys/tokens.
+export const appConfig = () => {
+  const host = (u?: string) => {
+    try {
+      return new URL(u || "").host;
+    } catch {
+      return null;
+    }
+  };
+  const list = (s?: string) => (s || "").split(",").map((x) => x.trim()).filter(Boolean);
+  return {
+    llm: { provider: host(E.OPENAI_BASE_URL) ?? "not set", model: E.OPENAI_MODEL || "not set", jev: jevEnabled() ? E.JEV_MODEL || "jev-latest" : null },
+    git: { host: host(E.GITLAB_URL), emails: list(E.GIT_AUTHOR_EMAILS) }, // no host = commits skipped (getCommits)
+    line: {
+      dir: resolve(/*turbopackIgnore: true*/ E.LINE_DIR || "."),
+      me: E.ME_NAME || "kiratae",
+      patterns: E.ME_PATTERNS || "kiratae,เต้(?![นา]),@All",
+      chats: list(E.LINE_CHATS),
+    },
+  };
+};
 const SYSTEM = () => `You fill a developer's daily timesheet. The user is "${E.ME_NAME || "kiratae"}" (also called เต้ / พี่เต้).
 Return JSON only: {"entries":[{"start":"HH:MM","end":"HH:MM",${
   jevEnabled() ? `"summary_en":"...","sources":"..."` : `"option":12`
