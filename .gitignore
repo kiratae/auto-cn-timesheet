@@ -12,3 +12,8 @@ line_messages
 [LINE]*.txt
 Open Dev API Spec.html
 Open Dev API Spec_files
+
+# compiled launcher (bun run exe)
+*.exe
+.edge-app/
+launcher.log

@@ -8,6 +8,7 @@
     "start": "next start -H 127.0.0.1 -p 3939",
     "cli": "bun cli/fill.ts",
     "line-export": "bun cli/line-export.ts",
+    "exe": "bun build cli/launcher.ts --compile --windows-hide-console --windows-icon=icon.ico --windows-title=\"Timesheet Autofill\" --outfile \"Timesheet Autofill.exe\"",
     "test": "bun test",
     "typecheck": "next typegen && tsc --noEmit",
     "lint": "eslint"

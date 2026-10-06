@@ -18,6 +18,7 @@ LINE chat exports (`[LINE]<chat>.txt`) go in `LINE_DIR` (default `line_messages/
 | `bun run dev` | Web UI at http://127.0.0.1:3939 |
 | `bun run cli [--date YYYY-MM-DD] [--role Developer] [--yes]` | Same flow in the terminal |
 | `bun run line-export` | Re-save the `LINE_CHATS` from LINE for Windows |
+| `bun run exe` | Build `Timesheet Autofill.exe`: opens the UI in its own window, stops the server when closed |
 | `bun test` / `bun run typecheck` / `bun run lint` | Checks |
 
 ## Layout
@@ -26,7 +27,7 @@ LINE chat exports (`[LINE]<chat>.txt`) go in `LINE_DIR` (default `line_messages/
 app/            Next.js pages and API routes (day, propose, submit, line-export)
 components/     UI (components/ui = shadcn)
 lib/            rules.ts (shared, pure), timesheet.ts (server logic), line-export.ts, api.ts (browser client)
-cli/            Bun CLIs: fill.ts, line-export.ts
+cli/            Bun CLIs: fill.ts, line-export.ts, launcher.ts
 scripts/        PowerShell UI automation for LINE (line-export.ps1; line-probe.ps1 for re-mapping after LINE updates)
 docs/           Timesheet Open Dev API summary
 ```
