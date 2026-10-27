@@ -122,3 +122,14 @@ export function validateEntries(entries: Entry[], open: Slot[], options: Option[
   });
   return errs;
 }
+
+// Date-picker dot for a day ("YYYY-MM-DD"), from the minutes already logged on it. Weekends with nothing logged get none.
+export type DayStatus = "full" | "over" | "under" | "missing" | "pending";
+export function dayStatus(date: string, mins: number, today: string): DayStatus | undefined {
+  if (mins > 480) return "over";
+  if (mins === 480) return "full";
+  if (mins > 0) return "under";
+  const dow = new Date(`${date}T00:00:00Z`).getUTCDay();
+  if (dow === 0 || dow === 6) return undefined;
+  return date < today ? "missing" : "pending";
+}

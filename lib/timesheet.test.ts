@@ -2,7 +2,7 @@
 import { expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { forRole, freeSlots, toMin, validateEntries } from "./rules";
+import { dayStatus, forRole, freeSlots, toMin, validateEntries } from "./rules";
 import { filterChat, parseLine, writingNow } from "./timesheet";
 
 const dir = join(import.meta.dir, "..", process.env.LINE_DIR || ".");
@@ -93,4 +93,16 @@ test("parseLine splits multi-word sender names from the message", () => {
 test("writingNow reads the entry being streamed from partial JSON", () => {
   const out = String.raw`{"entries":[{"start":"09:00","end":"12:00","detail":"a"},{"start":"13:00","end":"15:30","detail":"แก้บั๊ก \"login\"\nหน้า`;
   expect(writingNow(out)).toEqual({ text: "LLM writing entry 2 (13:00-15:30)", detail: `แก้บั๊ก "login" หน้า` });
+});
+
+test("dayStatus: date-picker dot colours", () => {
+  const today = "2026-10-14"; // Wednesday
+  expect(dayStatus("2026-10-13", 480, today)).toBe("full");
+  expect(dayStatus("2026-10-13", 481, today)).toBe("over");
+  expect(dayStatus("2026-10-13", 60, today)).toBe("under");
+  expect(dayStatus("2026-10-13", 0, today)).toBe("missing");
+  expect(dayStatus("2026-10-14", 0, today)).toBe("pending");
+  expect(dayStatus("2026-10-15", 0, today)).toBe("pending");
+  expect(dayStatus("2026-10-10", 0, today)).toBeUndefined(); // Saturday
+  expect(dayStatus("2026-10-10", 240, today)).toBe("under"); // weekend work still shows
 });

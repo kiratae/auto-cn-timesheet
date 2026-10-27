@@ -165,12 +165,18 @@ async function commitFiles(pid: number, sha: string): Promise<CommitFile[]> {
 }
 
 // ---------- Timesheet API
-async function ts(method: string, path: string, body?: unknown) {
+async function ts(method: string, path: string, body?: unknown, retry = 0): Promise<any> {
   const r = await fetch(`${E.TIMESHEET_BASE_URL || "https://timesheet.clicknext.com"}/api/open/dev/v1${path}`, {
     method,
     headers: { "x-api-key": need("TIMESHEET_API_KEY"), "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+  // Rate limited: wait (Retry-After, else 1s/2s/4s) and try again, up to 3 times.
+  if (r.status === 429 && retry < 3) {
+    const wait = Number(r.headers.get("retry-after")) * 1000 || 1000 * 2 ** retry;
+    await new Promise((res) => setTimeout(res, wait));
+    return ts(method, path, body, retry + 1);
+  }
   const j: any = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(`Timesheet ${r.status} ${method} ${path}: ${JSON.stringify(j)}`);
   return j;
@@ -203,6 +209,33 @@ export async function dayState(date: string) {
   const busy = [...existing.map((x) => span(x.start, x.end)), LUNCH];
   // slots: free work hours (what the LLM should fill). open: anywhere today or into tomorrow morning (what is allowed).
   return { existing, slots: freeSlots(WORK, busy), open: freeSlots([0, 2880], busy) };
+}
+
+// Minutes logged per day of a "YYYY-MM" month, for the date-picker dots.
+// ponytail: one call per day, 4 at a time (the API has no range endpoint and rate-limits bursts); swap for a range endpoint if one appears.
+// Past months rarely change, so they're cached in memory; submit() drops its month. The current/future month is always fetched.
+// ponytail: edits made on the timesheet website itself don't clear this; restart the app to see them.
+const monthCache = new Map<string, Record<string, number>>();
+export async function monthMinutes(month: string) {
+  if (month >= localDate().slice(0, 7)) return fetchMonthMinutes(month);
+  if (!monthCache.has(month)) monthCache.set(month, await fetchMonthMinutes(month));
+  return monthCache.get(month)!;
+}
+
+async function fetchMonthMinutes(month: string) {
+  const [y, m] = month.split("-").map(Number);
+  const days = Array.from({ length: new Date(Date.UTC(y, m, 0)).getUTCDate() }, (_, i) => `${month}-${String(i + 1).padStart(2, "0")}`);
+  const totals: number[] = [];
+  for (let i = 0; i < days.length; i += 4) {
+    totals.push(
+      ...(await Promise.all(
+        days
+          .slice(i, i + 4)
+          .map(async (d) => (await ts("GET", `/time-sheets/${d}`)).data.reduce((n: number, t: any) => n + (t.total_seconds - (t.exclude_seconds || 0)) / 60, 0)),
+      )),
+    );
+  }
+  return Object.fromEntries(days.map((d, i) => [d, Math.round(totals[i])])) as Record<string, number>;
 }
 
 // ---------- LLM (OpenAI-compatible)
@@ -434,6 +467,7 @@ export async function gatherCached(date: string, fresh = false) {
 }
 
 export async function submit(date: string, entries: Entry[]): Promise<SubmitResult[]> {
+  monthCache.delete(date.slice(0, 7));
   const results: SubmitResult[] = [];
   for (const [i, e] of entries.entries()) {
     try {
