@@ -211,33 +211,6 @@ export async function dayState(date: string) {
   return { existing, slots: freeSlots(WORK, busy), open: freeSlots([0, 2880], busy) };
 }
 
-// Minutes logged per day of a "YYYY-MM" month, for the date-picker dots.
-// ponytail: one call per day, 4 at a time (the API has no range endpoint and rate-limits bursts); swap for a range endpoint if one appears.
-// Past months rarely change, so they're cached in memory; submit() drops its month. The current/future month is always fetched.
-// ponytail: edits made on the timesheet website itself don't clear this; restart the app to see them.
-const monthCache = new Map<string, Record<string, number>>();
-export async function monthMinutes(month: string) {
-  if (month >= localDate().slice(0, 7)) return fetchMonthMinutes(month);
-  if (!monthCache.has(month)) monthCache.set(month, await fetchMonthMinutes(month));
-  return monthCache.get(month)!;
-}
-
-async function fetchMonthMinutes(month: string) {
-  const [y, m] = month.split("-").map(Number);
-  const days = Array.from({ length: new Date(Date.UTC(y, m, 0)).getUTCDate() }, (_, i) => `${month}-${String(i + 1).padStart(2, "0")}`);
-  const totals: number[] = [];
-  for (let i = 0; i < days.length; i += 4) {
-    totals.push(
-      ...(await Promise.all(
-        days
-          .slice(i, i + 4)
-          .map(async (d) => (await ts("GET", `/time-sheets/${d}`)).data.reduce((n: number, t: any) => n + (t.total_seconds - (t.exclude_seconds || 0)) / 60, 0)),
-      )),
-    );
-  }
-  return Object.fromEntries(days.map((d, i) => [d, Math.round(totals[i])])) as Record<string, number>;
-}
-
 // ---------- LLM (OpenAI-compatible)
 // With a Jev key, Jev picks project/task type (it's built for choosing from a list and reports confidence);
 // the LLM only splits the day and writes text, plus an English summary + sources for Jev to decide on.
@@ -467,7 +440,6 @@ export async function gatherCached(date: string, fresh = false) {
 }
 
 export async function submit(date: string, entries: Entry[]): Promise<SubmitResult[]> {
-  monthCache.delete(date.slice(0, 7));
   const results: SubmitResult[] = [];
   for (const [i, e] of entries.entries()) {
     try {

@@ -65,6 +65,3 @@ export async function submitEntries(date: string, entries: Entry[]) {
   const r = await fetch("/api/submit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date, entries }) });
   return json<{ results?: SubmitResult[]; errors?: EntryError[] }>(r);
 }
-
-// Minutes already logged per day ("YYYY-MM-DD") for a "YYYY-MM" month; drives the date-picker dots.
-export const fetchMonth = async (month: string) => json<Record<string, number>>(await fetch(`/api/month?month=${month}`));
