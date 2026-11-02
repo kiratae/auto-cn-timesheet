@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cancelLineExport, exportLineStream, fetchDay, proposeStream, submitEntries } from "@/lib/api";
+import { cancelLineExport, exportLineStream, fetchDay, proposeStream, saveLineChats, submitEntries } from "@/lib/api";
 import { type DayData, type Slot, freeSlots, span, toHM, validateEntries } from "@/lib/rules";
 import type { AppConfig } from "@/lib/timesheet";
 import { cn } from "@/lib/utils";
@@ -49,6 +49,8 @@ const storedRole = () => {
 
 export function TimesheetApp({ initialDate, config }: { initialDate: string; config: AppConfig }) {
   const { llm, git, line } = config;
+  const [chats, setChats] = useState(line.chats);
+  const [chatsText, setChatsText] = useState(line.chats.join(", "));
   const [date, setDate] = useState(initialDate);
   const [day, setDay] = useState<DayData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -288,7 +290,7 @@ export function TimesheetApp({ initialDate, config }: { initialDate: string; con
                         ["GitLab", [["Host", git.host ?? "not set (commits skipped)"], ["Author emails", git.emails.join(", ") || "not set"]]],
                         [
                           "LINE",
-                          [["Folder", line.dir], ["Me", line.me], ["Mentions", line.patterns], ["Chats", line.chats.join(", ") || "not set"]],
+                          [["Folder", line.dir], ["Me", line.me], ["Mentions", line.patterns], ["Chats", chats.join(", ") || "not set"]],
                         ],
                       ] as const
                     ).map(([title, rows]) => (
@@ -304,6 +306,35 @@ export function TimesheetApp({ initialDate, config }: { initialDate: string; con
                         </dl>
                       </div>
                     ))}
+                    <div className="mt-2 border-t pt-2">
+                      <label htmlFor="line-chats" className="mb-1 block font-medium">
+                        LINE chats to export
+                      </label>
+                      <textarea
+                        id="line-chats"
+                        value={chatsText}
+                        onChange={(e) => setChatsText(e.target.value)}
+                        placeholder="Comma-separated, as shown in LINE"
+                        className="w-full rounded-md border bg-transparent p-1.5"
+                        rows={2}
+                      />
+                      <Button
+                        size="sm"
+                        className="mt-1"
+                        onClick={() =>
+                          saveLineChats(chatsText.split(",")).then(
+                            (c) => {
+                              setChats(c);
+                              setChatsText(c.join(", "));
+                              toast.success("LINE chats saved");
+                            },
+                            (e) => toast.error("Couldn't save chats", { description: message(e) }),
+                          )
+                        }
+                      >
+                        Save
+                      </Button>
+                    </div>
                   </PopoverContent>
                 </Popover>
               </div>

@@ -61,6 +61,11 @@ export async function cancelLineExport() {
   return json<{ status: "requested" | "too-late" | "not-running" }>(r);
 }
 
+export async function saveLineChats(chats: string[]) {
+  const r = await fetch("/api/line-chats", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chats }) });
+  return (await json<{ chats: string[] }>(r)).chats;
+}
+
 export async function submitEntries(date: string, entries: Entry[]) {
   const r = await fetch("/api/submit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date, entries }) });
   return json<{ results?: SubmitResult[]; errors?: EntryError[] }>(r);

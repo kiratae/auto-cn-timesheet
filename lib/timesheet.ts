@@ -1,7 +1,7 @@
 // Server-side logic: LINE chat, GitLab, Timesheet API, LLM + Jev. Used by the Next.js route
 // handlers (app/api/*) and the CLIs (cli/). Runs on Node or Bun, so no Bun-only APIs here.
 /* eslint-disable @typescript-eslint/no-explicit-any -- raw JSON from GitLab/Timesheet/LLM/Jev is mapped into typed shapes right away */
-import { readdirSync, readFileSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import {
   type Commit,
@@ -43,6 +43,22 @@ const LUNCH = range(E.LUNCH || "12:00-13:00");
 export const JEV_MIN = Number(E.JEV_MIN_CONFIDENCE || 0.6); // below this a pick is flagged for review
 
 // ---------- LINE chat
+// Chats to export: set in the app (data/line-chats.json), else LINE_CHATS from .env.
+const CHATS_FILE = resolve(/*turbopackIgnore: true*/ "data", "line-chats.json");
+const splitList = (s?: string) => (s || "").split(",").map((x) => x.trim()).filter(Boolean);
+export const lineChats = (): string[] => {
+  try {
+    return JSON.parse(readFileSync(CHATS_FILE, "utf8"));
+  } catch {
+    return splitList(E.LINE_CHATS);
+  }
+};
+export function saveLineChats(chats: string[]) {
+  const clean = [...new Set(chats.map((c) => String(c).trim()).filter(Boolean))];
+  mkdirSync(resolve(/*turbopackIgnore: true*/ "data"), { recursive: true });
+  writeFileSync(CHATS_FILE, JSON.stringify(clean, null, 2));
+  return clean;
+}
 export function parseLine(text: string, group: string, me: string): Msg[] {
   const out: Msg[] = [];
   let date = "";
@@ -233,7 +249,7 @@ export const appConfig = () => {
       dir: resolve(/*turbopackIgnore: true*/ E.LINE_DIR || "."),
       me: E.ME_NAME || "kiratae",
       patterns: E.ME_PATTERNS || "kiratae,เต้(?![นา]),@All",
-      chats: list(E.LINE_CHATS),
+      chats: lineChats(),
     },
   };
 };

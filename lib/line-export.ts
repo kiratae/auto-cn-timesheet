@@ -5,7 +5,7 @@ import { rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import type { ChatExport } from "./rules";
-import { clearDayCache } from "./timesheet";
+import { clearDayCache, lineChats } from "./timesheet";
 
 export type ExportResult = { chats: ChatExport[]; cancelled: boolean };
 
@@ -23,17 +23,11 @@ export function requestCancel(): "requested" | "too-late" | "not-running" {
   return "requested";
 }
 
-export const lineChats = () =>
-  (process.env.LINE_CHATS || "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-
 export async function exportChats(onProgress: (text: string) => void): Promise<ExportResult> {
   if (process.platform !== "win32") throw new Error("LINE export needs LINE for Windows");
   if (current) throw new Error("A LINE export is already running");
   const chats = lineChats();
-  if (!chats.length) throw new Error("Set LINE_CHATS in .env (comma-separated chat names, as shown in LINE)");
+  if (!chats.length) throw new Error("Add chat names in the header config (as shown in LINE)");
   const run = { cancelFile: join(tmpdir(), `line-export-cancel-${process.pid}-${Date.now()}`), controlling: false };
   current = run;
   try {
